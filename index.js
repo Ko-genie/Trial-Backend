@@ -80,6 +80,55 @@ async function scrapeProductData(url) {
   }
 }
 
+// Manual Ad Generation endpoint
+app.post('/generateAdPrompt', async (req, res) => {
+  const { brandName, productName, productDescription, targetAudience, uniqueSellingPoints } = req.body;
+
+  // Validate the input fields
+  if (!brandName || !productName || !productDescription || !targetAudience || !uniqueSellingPoints) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  try {
+    // Construct a prompt for GPT-4 based on manual entry
+    const prompt = `Generate an engaging ad for the following product:
+                    Brand: ${brandName}
+                    Product: ${productName}
+                    Description: ${productDescription}
+                    Target Audience: ${targetAudience}
+                    Unique Selling Points: ${uniqueSellingPoints}`;
+
+    const gptResponse = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: "You are an AI that generates ad copy." },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 150
+      },
+      { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` } }
+    );
+
+    const adCopy = gptResponse.data.choices[0].message.content;
+
+    // Send generated ad copy and original data back to the frontend
+    res.json({
+      brandName,
+      productName,
+      productDescription,
+      targetAudience,
+      uniqueSellingPoints,
+      adCopy
+    });
+  } catch (error) {
+    console.error('Error generating ad:', error);
+    res.status(500).json({ message: 'Error generating ad', error: error.message });
+  }
+});
+
+
 // Generate Ad endpoint
 app.post('/createAd', async (req, res) => {
   const { url, gender, ageGroup } = req.body;
